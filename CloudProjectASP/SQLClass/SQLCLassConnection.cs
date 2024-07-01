@@ -52,6 +52,7 @@ namespace CloudProject.SQLClass
             }
             responce.StatusCode = 210;
             await responce.WriteAsync("Пользователь создан");
+            Console.WriteLine($"Пользователь создан под именем: {login}");
         }
         private string HashPassword(string pass)
         {
@@ -62,9 +63,11 @@ namespace CloudProject.SQLClass
                 return Convert.ToBase64String(hash);
             }
         }
-        public async Task Authorization(string login, string password, HttpResponse responce)
+        public async Task Authorization(HttpRequest request, HttpResponse responce)
         {
-            password = HashPassword(password);
+            var user = await request.ReadFromJsonAsync<UserClass>();
+            var login = user.Name;
+            var password = HashPassword(user.Password);
             using(var conn = new NpgsqlConnection(ConnectString))
             {
                 conn.Open();
@@ -81,17 +84,23 @@ namespace CloudProject.SQLClass
                             int count2 = Convert.ToInt32(command2.ExecuteScalar());
                             if (count2 > 0)
                             {
-                                Console.WriteLine("Пароль верный \n Вы вошли!");
+                                responce.StatusCode = 210;
+                                await responce.WriteAsync("Успешный вход");
+                                Console.WriteLine($"Пользователь успешно зашёл, его логин: {login}");
                             }
                             else
                             {
-                                Console.WriteLine("Пароль неверный!");
+                                responce.StatusCode = 212;
+                                await responce.WriteAsync("Неверный пароль");
+                                Console.WriteLine($"Пользователь неудачная попытка входа пользователя, его логин: {login}");
                             }
                         }
                     }
                     else
                     {
-                        Console.WriteLine("Пользователь не найден");
+                        responce.StatusCode = 215;
+                        await responce.WriteAsync("Пользователь не найден");
+                        Console.WriteLine("Пользователь не найден, не удачная попытка войти");
                     }
                 }
             }

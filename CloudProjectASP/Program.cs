@@ -18,7 +18,7 @@ namespace CloudProjectASP
                 }
                 else if (context.Request.Path == "/Authorization" && context.Request.Method == "PUT")
                 {
-                    await context.Response.WriteAsync("Authorization");
+                    await sqlconnection.Authorization(context.Request, context.Response);
                 }
             });
             app.Run();
