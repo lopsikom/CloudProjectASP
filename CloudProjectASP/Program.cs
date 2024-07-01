@@ -1,3 +1,5 @@
+using CloudProject.SQLClass;
+
 namespace CloudProjectASP
 {
     public class Program
@@ -5,10 +7,20 @@ namespace CloudProjectASP
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
-
+            var sqlconnection = new SQLCLassConnection();
             var app = builder.Build();
             app.MapGet("/", () => "hello world");
-            app.Run(async (context) => await context.Response.WriteAsync("YREWWEW"));
+            app.Run(async (context) =>
+            {
+                if(context.Request.Path == "/Registration" && context.Request.Method == "PUT")
+                {
+                    await sqlconnection.RegistartionUser(context.Request, context.Response);
+                }
+                else if (context.Request.Path == "/Authorization" && context.Request.Method == "PUT")
+                {
+                    await context.Response.WriteAsync("Authorization");
+                }
+            });
             app.Run();
         }
     }

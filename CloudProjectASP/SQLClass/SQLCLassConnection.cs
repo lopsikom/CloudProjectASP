@@ -7,13 +7,15 @@ using System.Threading.Tasks;
 using Npgsql;
 using System.Security.Cryptography;
 using System.Runtime.Intrinsics.Arm;
+using System.Text.RegularExpressions;
+using CloudProjectASP.HttpDataClasses;
 
 namespace CloudProject.SQLClass
 {
     public class SQLCLassConnection
     {
         private string ConnectString = "Host=localhost;Database=DataBaseC#;Username=lopsik;Password=lopsik123;";
-        public void SqlConnectToDB()
+        private void SqlConnectToDB()
         {
             using(var conn = new NpgsqlConnection(ConnectString)) 
             {
@@ -32,13 +34,11 @@ namespace CloudProject.SQLClass
                 }
             }
         }
-        public void RegistartionUser()
+        public async Task RegistartionUser(HttpRequest request, HttpResponse responce)
         {
-            Console.WriteLine("Введите ваш логин");
-            string login = Console.ReadLine();
-            Console.WriteLine("Введите ваш пароль");
-            string password = Console.ReadLine();
-            password = HashPassword(password);
+            var user = await request.ReadFromJsonAsync<UserClass>();
+            var login = user.Name;
+            var password = HashPassword(user.Password);
             using(var conn = new NpgsqlConnection(ConnectString))
             {
                 conn.Open();
@@ -50,6 +50,8 @@ namespace CloudProject.SQLClass
                     command.ExecuteNonQuery();
                 }
             }
+            responce.StatusCode = 210;
+            await responce.WriteAsync("Пользователь создан");
         }
         private string HashPassword(string pass)
         {
@@ -60,12 +62,8 @@ namespace CloudProject.SQLClass
                 return Convert.ToBase64String(hash);
             }
         }
-        public void Authorization()
+        public async Task Authorization(string login, string password, HttpResponse responce)
         {
-            Console.WriteLine("Введите ваш логин");
-            string login = Console.ReadLine();
-            Console.WriteLine("Введите ваш пароль");
-            string password = Console.ReadLine();
             password = HashPassword(password);
             using(var conn = new NpgsqlConnection(ConnectString))
             {
