@@ -39,7 +39,8 @@ namespace CloudProject.SQLClass
             var user = await request.ReadFromJsonAsync<UserClass>();
             var login = user.Name;
             var password = HashPassword(user.Password);
-            using(var conn = new NpgsqlConnection(ConnectString))
+            int userID;
+            using (var conn = new NpgsqlConnection(ConnectString))
             {
                 conn.Open();
                 using(var command = new NpgsqlCommand("INSERT INTO \"Users\" (UserName, Password, Root) VALUES (@UserName, @Password, @Root)", conn))
@@ -49,9 +50,14 @@ namespace CloudProject.SQLClass
                     command.Parameters.AddWithValue("Root", false);
                     command.ExecuteNonQuery();
                 }
+                using (var command = new NpgsqlCommand("SELECT ID FROM \"Users\" WHERE username = @username", conn))
+                {
+                    command.Parameters.AddWithValue("@username", login);
+                    userID = Convert.ToInt32(command.ExecuteScalar());
+                }
             }
             responce.StatusCode = 210;
-            await responce.WriteAsync("Пользователь создан");
+            await responce.WriteAsJsonAsync(new {message = "Пользователь создан", ID = userID});
             Console.WriteLine($"Пользователь создан под именем: {login}");
         }
         private string HashPassword(string pass)
