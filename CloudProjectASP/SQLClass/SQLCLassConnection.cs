@@ -56,18 +56,10 @@ namespace CloudProject.SQLClass
                     userID = Convert.ToInt32(command.ExecuteScalar());
                 }
             }
+            string hash = AddHashCodeInDataBaseForRegistartion(login);
             responce.StatusCode = 210;
-            await responce.WriteAsJsonAsync(new {message = "Пользователь создан", ID = userID});
+            await responce.WriteAsJsonAsync(new {message = "Пользователь создан", Hash = hash});
             Console.WriteLine($"Пользователь создан под именем: {login}");
-        }
-        private string HashPassword(string pass)
-        {
-            using (SHA256 sha256 = SHA256.Create())
-            {
-                byte[] bytes = Encoding.UTF8.GetBytes(pass);
-                byte[] hash = sha256.ComputeHash(bytes);
-                return Convert.ToBase64String(hash);
-            }
         }
         public async Task Authorization(HttpRequest request, HttpResponse responce)
         {
@@ -90,8 +82,9 @@ namespace CloudProject.SQLClass
                             int count2 = Convert.ToInt32(command2.ExecuteScalar());
                             if (count2 > 0)
                             {
+                                string hash = AddHashCodeInDataBaseForAutherization(login);
                                 responce.StatusCode = 210;
-                                await responce.WriteAsync("Успешный вход");
+                                await responce.WriteAsJsonAsync(new { message = "Успешеый вход", Hash = hash });
                                 Console.WriteLine($"Пользователь успешно зашёл, его логин: {login}");
                             }
                             else
@@ -109,6 +102,70 @@ namespace CloudProject.SQLClass
                         Console.WriteLine("Пользователь не найден, не удачная попытка войти");
                     }
                 }
+            }
+        }
+        private string AddHashCodeInDataBaseForAutherization(string login)
+        {
+            using (var conn = new NpgsqlConnection(ConnectString))
+            {
+                conn.Open();
+                using (var command = new NpgsqlCommand("UPDATE \"UserHash\" SET HashCode = @HashCode WHERE Username = @Username", conn))
+                {
+                    command.Parameters.AddWithValue("@Username", login);
+                    string hash = RandomHash();
+                    command.Parameters.AddWithValue("@HashCode", hash);
+                    command.ExecuteNonQuery();
+                    return hash;
+                }
+            }
+        }
+        private string AddHashCodeInDataBaseForRegistartion(string login)
+        {
+            using (var conn = new NpgsqlConnection(ConnectString))
+            {
+                conn.Open();
+                using (var command = new NpgsqlCommand("INSERT INTO \"UserHash\" (Username, HashCode) VALUES (@Username, @HashCode)", conn))
+                {
+                    command.Parameters.AddWithValue("@Username", login);
+                    string hash = RandomHash();
+                    command.Parameters.AddWithValue("@HashCode", hash);
+                    command.ExecuteNonQuery();
+                    return hash;
+                }
+            }
+        }
+        private string HashPassword(string pass)
+        {
+            using (SHA256 sha256 = SHA256.Create())
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(pass);
+                byte[] hash = sha256.ComputeHash(bytes);
+                return Convert.ToBase64String(hash);
+            }
+        }
+        private string RandomHash()
+        {
+            byte[] randomData = GenerateRandomByteData(32);
+            return HashComplete(randomData);
+
+        }
+        private byte[] GenerateRandomByteData(int lenght)
+        {
+            byte[] data = new byte[lenght];
+
+            using (RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider())
+            {
+                rng.GetBytes(data);
+            }
+
+            return data;
+        }
+        private string HashComplete(byte[] ByteData)
+        {
+            using (SHA256 sha256 = SHA256.Create())
+            {
+                byte[] hash = sha256.ComputeHash(ByteData);
+                return Convert.ToBase64String(hash);
             }
         }
     }
