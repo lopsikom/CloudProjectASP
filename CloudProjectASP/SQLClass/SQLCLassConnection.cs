@@ -43,17 +43,24 @@ namespace CloudProject.SQLClass
             using (var conn = new NpgsqlConnection(ConnectString))
             {
                 conn.Open();
+                using(var command = new NpgsqlCommand("SELECT COUNT(*) FROM \"Users\" WHERE username = @username", conn))
+                {
+                    command.Parameters.AddWithValue("username", login);
+                    int count = Convert.ToInt32(command.ExecuteScalar());
+                    if (count > 0)
+                    {
+                        responce.StatusCode = 215;
+                        await responce.WriteAsync("Такой пользователь уже есть");
+                        Console.WriteLine($"Попытка создать существующего пользователя: {login}");
+                        return;
+                    }
+                }
                 using(var command = new NpgsqlCommand("INSERT INTO \"Users\" (UserName, Password, Root) VALUES (@UserName, @Password, @Root)", conn))
                 {
                     command.Parameters.AddWithValue("UserName", login);
                     command.Parameters.AddWithValue("Password", password);
                     command.Parameters.AddWithValue("Root", false);
                     command.ExecuteNonQuery();
-                }
-                using (var command = new NpgsqlCommand("SELECT ID FROM \"Users\" WHERE username = @username", conn))
-                {
-                    command.Parameters.AddWithValue("@username", login);
-                    userID = Convert.ToInt32(command.ExecuteScalar());
                 }
             }
             string hash = AddHashCodeInDataBaseForRegistartion(login);
