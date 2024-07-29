@@ -15,25 +15,25 @@ namespace CloudProject.SQLClass
     public class SQLCLassConnection
     {
         private string ConnectString = "Host=localhost;Database=DataBaseC#;Username=lopsik;Password=lopsik123;";
-        private void SqlConnectToDB()
-        {
-            using(var conn = new NpgsqlConnection(ConnectString)) 
-            {
-                conn.Open();
-                Console.WriteLine("Соединение установленно");
-                Console.WriteLine($"{conn.Database}");
-                using (var command = new NpgsqlCommand("SELECT * FROM \"Users\"", conn))
-                {
-                    using (var reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            Console.WriteLine(reader.GetString(2));
-                        }
-                    }
-                }
-            }
-        }
+        //private void SqlConnectToDB()
+        //{
+        //    using (var conn = new NpgsqlConnection(ConnectString))
+        //    {
+        //        conn.Open();
+        //        Console.WriteLine("Соединение установленно");
+        //        Console.WriteLine($"{conn.Database}");
+        //        using (var command = new NpgsqlCommand("SELECT * FROM \"Users\"", conn))
+        //        {
+        //            using (var reader = command.ExecuteReader())
+        //            {
+        //                while (reader.Read())
+        //                {
+        //                    Console.WriteLine(reader.GetString(2));
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
         public async Task RegistartionUser(HttpRequest request, HttpResponse responce)
         {
             var user = await request.ReadFromJsonAsync<UserClass>();
@@ -63,7 +63,7 @@ namespace CloudProject.SQLClass
                     command.ExecuteNonQuery();
                 }
             }
-            string hash = AddHashCodeInDataBaseForRegistartion(login);
+            string hash = AddHashCodeInDatabase(login, true);
             responce.StatusCode = 210;
             await responce.WriteAsJsonAsync(new {message = "Пользователь создан", Hash = hash});
             Console.WriteLine($"Пользователь создан под именем: {login}");
@@ -89,7 +89,7 @@ namespace CloudProject.SQLClass
                             int count2 = Convert.ToInt32(command2.ExecuteScalar());
                             if (count2 > 0)
                             {
-                                string hash = AddHashCodeInDataBaseForAutherization(login);
+                                string hash = AddHashCodeInDatabase(login, false);
                                 responce.StatusCode = 210;
                                 await responce.WriteAsJsonAsync(new { message = "Успешеый вход", Hash = hash });
                                 Console.WriteLine($"Пользователь успешно зашёл, его логин: {login}");
@@ -111,12 +111,16 @@ namespace CloudProject.SQLClass
                 }
             }
         }
-        private string AddHashCodeInDataBaseForAutherization(string login)
+        private string AddHashCodeInDatabase(string login, bool isRegistration)
         {
+            string query = isRegistration
+                ? "INSERT INTO \"UserHash\" (Username, HashCode) VALUES (@Username, @HashCode)"
+                : "UPDATE \"UserHash\" SET HashCode = @HashCode WHERE Username = @Username";
+
             using (var conn = new NpgsqlConnection(ConnectString))
             {
                 conn.Open();
-                using (var command = new NpgsqlCommand("UPDATE \"UserHash\" SET HashCode = @HashCode WHERE Username = @Username", conn))
+                using (var command = new NpgsqlCommand(query, conn))
                 {
                     command.Parameters.AddWithValue("@Username", login);
                     string hash = RandomHash();
@@ -126,18 +130,25 @@ namespace CloudProject.SQLClass
                 }
             }
         }
-        private string AddHashCodeInDataBaseForRegistartion(string login)
+        public virtual string CheckHashInDataBase(string hash)
         {
             using (var conn = new NpgsqlConnection(ConnectString))
             {
                 conn.Open();
-                using (var command = new NpgsqlCommand("INSERT INTO \"UserHash\" (Username, HashCode) VALUES (@Username, @HashCode)", conn))
+                using (var command = new NpgsqlCommand("SELECT username FROM \"UserHash\" WHERE hashcode = @hashcode", conn))
                 {
-                    command.Parameters.AddWithValue("@Username", login);
-                    string hash = RandomHash();
-                    command.Parameters.AddWithValue("@HashCode", hash);
-                    command.ExecuteNonQuery();
-                    return hash;
+                    command.Parameters.AddWithValue("@hashcode", hash);
+                    using (var result = command.ExecuteReader())
+                    {
+                        if (result.Read())
+                        {
+                            return result.GetString(0); // Предполагаем, что HashCode является string
+                        }
+                        else
+                        {
+                            return null;
+                        }
+                    }
                 }
             }
         }
