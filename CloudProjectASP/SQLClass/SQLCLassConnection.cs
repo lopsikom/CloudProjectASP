@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 using System.Runtime.Intrinsics.Arm;
 using System.Text.RegularExpressions;
 using CloudProjectASP.HttpDataClasses;
+using System.Diagnostics.Metrics;
 
 namespace CloudProject.SQLClass
 {
@@ -49,7 +50,7 @@ namespace CloudProject.SQLClass
                     int count = Convert.ToInt32(command.ExecuteScalar());
                     if (count > 0)
                     {
-                        responce.StatusCode = 215;
+                        responce.StatusCode = StatusCodes.Status409Conflict;
                         await responce.WriteAsync("Такой пользователь уже есть");
                         Console.WriteLine($"Попытка создать существующего пользователя: {login}");
                         return;
@@ -64,7 +65,7 @@ namespace CloudProject.SQLClass
                 }
             }
             string hash = AddHashCodeInDatabase(login, true);
-            responce.StatusCode = 210;
+            responce.StatusCode = StatusCodes.Status200OK;
             await responce.WriteAsJsonAsync(new {message = "Пользователь создан", Hash = hash});
             Console.WriteLine($"Пользователь создан под именем: {login}");
         }
@@ -76,37 +77,38 @@ namespace CloudProject.SQLClass
             using(var conn = new NpgsqlConnection(ConnectString))
             {
                 conn.Open();
-                using(var command = new NpgsqlCommand("SELECT COUNT(*) FROM \"Users\" WHERE username = @username", conn))
+                using (var command2 = new NpgsqlCommand("SELECT password FROM \"Users\" WHERE username = @username", conn))
                 {
-                    command.Parameters.AddWithValue("@username", login);
-                    int count = Convert.ToInt32(command.ExecuteScalar());
-                    if (count > 0)
+                    command2.Parameters.AddWithValue("@username", login);
+
+                    using (var result = command2.ExecuteReader())
                     {
-                        using (var command2 = new NpgsqlCommand("SELECT COUNT(*) FROM \"Users\" WHERE username = @username AND password = @password", conn))
+                        if (result.Read()) // Проверка наличия строки
                         {
-                            command2.Parameters.AddWithValue("@username", login);
-                            command2.Parameters.AddWithValue("@password", password);
-                            int count2 = Convert.ToInt32(command2.ExecuteScalar());
-                            if (count2 > 0)
+                            string hashuser = result.GetString(0); // Получение хеша пароля из базы данных
+
+                            // Сравнение паролей
+                            if (hashuser.Equals(password)) // Предположим, что password уже является хешем
                             {
                                 string hash = AddHashCodeInDatabase(login, false);
-                                responce.StatusCode = 210;
-                                await responce.WriteAsJsonAsync(new { message = "Успешеый вход", Hash = hash });
+                                responce.StatusCode = StatusCodes.Status200OK; // Стандартный код успешного ответа
+                                await responce.WriteAsJsonAsync(new { message = "Успешный вход", Hash = hash });
                                 Console.WriteLine($"Пользователь успешно зашёл, его логин: {login}");
                             }
                             else
                             {
-                                responce.StatusCode = 212;
+                                responce.StatusCode = StatusCodes.Status401Unauthorized; // Стандартный код для неправильного пароля
                                 await responce.WriteAsync("Неверный пароль");
                                 Console.WriteLine($"Пользователь неудачная попытка входа пользователя, его логин: {login}");
                             }
                         }
-                    }
-                    else
-                    {
-                        responce.StatusCode = 215;
-                        await responce.WriteAsync("Пользователь не найден");
-                        Console.WriteLine("Пользователь не найден, не удачная попытка войти");
+                        else
+                        {
+                            // Если пользователь не найден
+                            responce.StatusCode = StatusCodes.Status404NotFound; // Стандартный код для не найденного ресурса
+                            await responce.WriteAsync("Пользователь не найден");
+                            Console.WriteLine($"Пользователь не найден, его логин: {login}");
+                        }
                     }
                 }
             }
@@ -142,7 +144,7 @@ namespace CloudProject.SQLClass
                     {
                         if (result.Read())
                         {
-                            return result.GetString(0); // Предполагаем, что HashCode является string
+                            return result.GetString(0); 
                         }
                         else
                         {
