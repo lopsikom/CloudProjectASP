@@ -7,20 +7,25 @@ namespace CloudProjectASP
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
-            var sqlconnection = new SQLCLassConnection();
+
+            builder.Services.AddSingleton<SQLCLassConnection>();
+
             var app = builder.Build();
-            app.MapGet("/", () => "hello world");
-            app.Run(async (context) =>
+
+            app.MapGet("/", () => "Hello, world!");
+
+            app.MapPut("/Registration", async (context) =>
             {
-                if(context.Request.Path == "/Registration" && context.Request.Method == "PUT")
-                {
-                    await sqlconnection.RegistartionUser(context.Request, context.Response);
-                }
-                else if (context.Request.Path == "/Authorization" && context.Request.Method == "PUT")
-                {
-                    await sqlconnection.Authorization(context.Request, context.Response);
-                }
+                var sqlconnection = context.RequestServices.GetRequiredService<SQLCLassConnection>();
+                await sqlconnection.RegistartionUser(context.Request, context.Response);
             });
+
+            app.MapPut("/Authorization", async (context) =>
+            {
+                var sqlconnection = context.RequestServices.GetRequiredService<SQLCLassConnection>();
+                await sqlconnection.Authorization(context.Request, context.Response);
+            });
+
             app.Run();
         }
     }
