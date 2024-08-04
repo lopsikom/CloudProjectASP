@@ -32,6 +32,11 @@ namespace CloudProjectASP
                 var fileclass = context.RequestServices.GetRequiredService<FileClass>();
                 await fileclass.AllFilesUser(context.Request, context.Response);
             });
+            app.MapGet("/DownloandFile", async (context) =>
+            {
+                var fileclass = context.RequestServices.GetRequiredService<FileClass>();
+                await fileclass.DownloadFile(context.Request, context.Response);
+            });
 
             app.Run();
         }
