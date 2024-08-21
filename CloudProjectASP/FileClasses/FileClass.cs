@@ -77,5 +77,28 @@ namespace CloudProjectASP.FileClasses
             responce.StatusCode = StatusCodes.Status200OK;
             await responce.SendFileAsync(fileDownland.PhysicalPath);
         }
+        public async Task UploadFile(HttpRequest request, HttpResponse responce)
+        {
+            request.Headers.TryGetValue("HashCode", out var hash);
+            request.Headers.TryGetValue("FileName", out var FileName);
+            var login = CheckHashInDataBase(hash);
+            IFormFileCollection files = request.Form.Files;
+            if (!Directory.Exists($"{SpecialFolder}/{login}"))
+            {
+                Directory.CreateDirectory($"{SpecialFolder}/{login}");
+                Console.WriteLine($"Создана папка пользователя {login}");
+            }
+            foreach (var file in files)
+            {
+                string fullPath = $@"{SpecialFolder}/{login}/{FileName}";
+                Console.WriteLine("Добавление файла: " +  FileName);
+                using (var fileStream = new FileStream(fullPath, FileMode.Create))
+                {
+                    await file.CopyToAsync(fileStream);
+                }
+            }
+            responce.StatusCode = StatusCodes.Status200OK;
+
+        }
     }
 }
