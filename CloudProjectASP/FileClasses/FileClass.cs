@@ -91,7 +91,7 @@ namespace CloudProjectASP.FileClasses
             foreach (var file in files)
             {
                 string fullPath = $@"{SpecialFolder}/{login}/{FileName}";
-                Console.WriteLine("Добавление файла: " +  FileName);
+                Console.WriteLine($"Добавление файла: {FileName}, пользователем : {login}");
                 using (var fileStream = new FileStream(fullPath, FileMode.Create))
                 {
                     await file.CopyToAsync(fileStream);

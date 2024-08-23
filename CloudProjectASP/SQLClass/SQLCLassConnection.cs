@@ -77,7 +77,7 @@ namespace CloudProject.SQLClass
             using(var conn = new NpgsqlConnection(ConnectString))
             {
                 conn.Open();
-                using (var command2 = new NpgsqlCommand("SELECT password FROM \"Users\" WHERE username = @username", conn))
+                using (var command2 = new NpgsqlCommand("SELECT password,root FROM \"Users\" WHERE username = @username", conn))
                 {
                     command2.Parameters.AddWithValue("@username", login);
 
@@ -85,14 +85,14 @@ namespace CloudProject.SQLClass
                     {
                         if (result.Read()) // Проверка наличия строки
                         {
-                            string hashuser = result.GetString(0); // Получение хеша пароля из базы данных
-
+                            string hashuser = result["password"].ToString();
+                            string root = result["root"].ToString();
                             // Сравнение паролей
                             if (hashuser.Equals(password)) // Предположим, что password уже является хешем
                             {
                                 string hash = AddHashCodeInDatabase(login, false);
                                 responce.StatusCode = StatusCodes.Status200OK; // Стандартный код успешного ответа
-                                await responce.WriteAsJsonAsync(new { message = "Успешный вход", Hash = hash });
+                                await responce.WriteAsJsonAsync(new { message = "Успешный вход", Hash = hash,Root = root });
                                 Console.WriteLine($"Пользователь успешно зашёл, его логин: {login}");
                             }
                             else
@@ -108,6 +108,45 @@ namespace CloudProject.SQLClass
                             responce.StatusCode = StatusCodes.Status404NotFound; // Стандартный код для не найденного ресурса
                             await responce.WriteAsync("Пользователь не найден");
                             Console.WriteLine($"Пользователь не найден, его логин: {login}");
+                        }
+                    }
+                }
+            }
+        }
+        public async Task GetUsersList(HttpRequest request, HttpResponse responce)
+        {
+            request.Headers.TryGetValue("HashCode", out var hash);
+            if(CheckHashInDataBase(hash) == null)
+            {
+                responce.StatusCode = StatusCodes.Status404NotFound;
+                await responce.WriteAsync("Ошибка при проверки хеш-кода");
+                Console.WriteLine("Ошибка при проверки хеш-кода");
+            }
+            else
+            {
+                using (var conn = new NpgsqlConnection(ConnectString))
+                {
+                    var userDataList = new List<UserClass>();
+                    conn.Open();
+                    using(var command = new NpgsqlCommand("SELECT username, root FROM \"Users\"", conn))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (reader.HasRows)
+                            {
+                                while (reader.Read())
+                                {
+                                    var userData = new UserClass
+                                    {
+                                        Name = reader["username"].ToString(),
+                                        Root = reader["root"].ToString()
+                                    };
+                                    userDataList.Add(userData);
+                                }
+                                responce.StatusCode = StatusCodes.Status200OK;
+                                await responce.WriteAsJsonAsync(new {message = "Получение данных о пользователях", UsersList = userDataList });
+                                Console.WriteLine("Получение данных о пользователях");
+                            }
                         }
                     }
                 }
