@@ -15,7 +15,7 @@ namespace CloudProject.SQLClass
 {
     public class SQLCLassConnection
     {
-        private string ConnectString = "Host=localhost;Database=DataBaseC#;Username=lopsik;Password=lopsik123;";
+        private string ConnectString = "Host=postgressql;Port=5432;Database=CloudSQL;Username=lopsik;Password=lopsik123;";
         //private void SqlConnectToDB()
         //{
         //    using (var conn = new NpgsqlConnection(ConnectString))

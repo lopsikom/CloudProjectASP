@@ -8,7 +8,7 @@ namespace CloudProjectASP.FileClasses
 {
     public class FileClass : SQLCLassConnection
     {
-        private string SpecialFolder = $@"{Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)}\CloudProject";
+        private string SpecialFolder = $@"/app/data/CloudProject";
         public FileClass()
         {
             if (!Directory.Exists(SpecialFolder))
@@ -33,7 +33,7 @@ namespace CloudProjectASP.FileClasses
                 Directory.CreateDirectory($"{SpecialFolder}/{login}");
                 Console.WriteLine($"Создана папка пользователя {login}");
             }
-            var UserDirectoryInfo = new DirectoryInfo($@"{SpecialFolder}\{login}");
+            var UserDirectoryInfo = new DirectoryInfo($@"{SpecialFolder}/{login}");
             FileInfo[] UserFiles = UserDirectoryInfo.GetFiles();
             var SimpleUserFiles = new List<SimpleFileInfo>();
             foreach( FileInfo UserFile in UserFiles)
@@ -63,7 +63,7 @@ namespace CloudProjectASP.FileClasses
                 Console.WriteLine("Попытка получить данные, неверный хеш-код");
                 return;
             }
-            var fileprovider = new PhysicalFileProvider($@"{SpecialFolder}\{login}");
+            var fileprovider = new PhysicalFileProvider($@"{SpecialFolder}/{login}");
             var fileDownland = fileprovider.GetFileInfo(FileName);
             if (!fileDownland.Exists)
             {
